@@ -1,0 +1,10 @@
+{   
+  "worldToPaperScale": 3.0529685252835925,
+  "worldToPaperTranslateX": 173.35610564383717,
+  "worldToPaperTranslateY": 305.5828538654896,
+  "private": true,
+  "dependencies": {
+    "express": "4.9.0",
+    "mongodb": "~2.0.33"
+  }
+}

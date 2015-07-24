@@ -1,0 +1,53 @@
+<!--/////////////////////////////////////////////////////////////////////////////////
+// Copyright (c) Autodesk, Inc. All rights reserved
+// Written by Philippe Leefsma 2014 - ADN/Developer Technical Services
+//
+// Permission to use, copy, modify, and distribute this software in
+// object code form for any purpose and without fee is hereby granted,
+// provided that the above copyright notice appears in all copies and
+// that both that copyright notice and the limited warranty and
+// restricted rights notice below appear in all supporting
+// documentation.
+//
+// AUTODESK PROVIDES THIS PROGRAM "AS IS" AND WITH ALL FAULTS.
+// AUTODESK SPECIFICALLY DISCLAIMS ANY IMPLIED WARRANTY OF
+// MERCHANTABILITY OR FITNESS FOR A PARTICULAR USE.  AUTODESK, INC.
+// DOES NOT WARRANT THAT THE OPERATION OF THE PROGRAM WILL BE
+// UNINTERRUPTED OR ERROR FREE.
+////////////////////////////////////////////////////////////////////////////////-->
+<html>
+<head>
+
+    <title>Woodland</title>
+
+    <!--link rel="shortcut icon" href="/images/favicon.ico" type="image/x-icon" /-->
+
+    <link rel="stylesheet" type="text/css" href="./stylesheets/main.css">
+
+    <!-- jquery -->
+    <!--script src="https://code.jquery.com/jquery-2.1.2.min.js"></script-->
+
+    <!-- Viewer staging -->
+    <!-- link type="text/css" rel="stylesheet" href="https://developer-stg.api.autodesk.com/viewingservice/v1/viewers/style.css"/>
+    <script src="https://developer-stg.api.autodesk.com/viewingservice/v1/viewers/viewer3D.min.js"></script -->
+
+    <!-- Viewer production -->
+    <link type="text/css" rel="stylesheet" href="https://developer.api.autodesk.com/viewingservice/v1/viewers/style.css?v=v1.2.16" />
+    <!--script src="/viewer3D.js?v=v1.2.16"></script-->
+    <script src="https://developer.api.autodesk.com/viewingservice/v1/viewers/viewer3D.min.js?v=v1.2.16"></script>
+
+    <script src="/scripts/index.js"></script>
+    <script src="/scripts/controlui.js"></script>
+    <script src="/scripts/marker.js"></script>
+    <script src="/scripts/debug.js"></script>
+</head>
+
+<body>
+    <div class="control-panel">
+    </div>
+    <div class="viewer-panel">
+        <div id="viewer3D" class="viewer-box"></div>
+        <div id="viewer2D" class="viewer-box"></div>
+    </div>
+</body>
+</html>

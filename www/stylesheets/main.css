@@ -1,0 +1,69 @@
+body {
+	margin: 0px;
+}
+
+.control-panel {
+	width: 30%;
+/*	padding: 0px 10px;*/
+	height: 100%;
+	display: block;
+	overflow: scroll;
+/*	float: left;*/
+	background-color: rgb(245, 245, 245);
+	text-align: center;
+	font: 'Open Sans';
+	font-size: 12px;
+	position: absolute;
+}
+
+.viewer-panel {
+	width: 70%;
+	height: 100%;
+/*	float: right;*/
+	display: block;
+	left: 30%;
+	position: absolute;
+}
+
+.viewer-box {
+	position: relative;
+	width: 100%;
+	height: 50%;
+}
+
+.control-title {
+	width: 100%;
+	display: block;
+	height: 20px;
+	line-height: 20px;
+	vertical-align: center;
+	text-align: left;
+	font-family: 'Open Sans';
+	font-size: 14px;
+	padding-left: 15px;
+}
+
+.control-row {
+	width: 100%;
+	display: block;
+	height: 40px;
+	line-height: 40px;
+	vertical-align: top;
+	text-align: center;
+}
+
+.control-label {
+/*	margin: 0px 10px;*/
+	margin-right: 7px;
+	margin-left: 10px;
+}
+
+.control-input {
+	width: 40%;
+	display: inline-block;}
+
+.control-slider {
+	width: 70%;
+	height: 12px;
+	display: inline-block;}
+
