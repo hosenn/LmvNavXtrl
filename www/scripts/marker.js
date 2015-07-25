@@ -33,11 +33,6 @@ function initializeMarker() {
 	marker.hideMarker();
 	marker.addEventListenerOnMarker("canvasclick", placeMarkerOnCanvas);
 	marker.toggleCanvas(true);
-
-	// marker.marker.addEventListener("mousedown", handleMarkerMousedown, false);
-	// disableViewerCanvas(viewer2D);
-	// marker.layer.addEventListener("click", placeMarkerOnCanvas, false);
-	// marker.displayCursor(true);
 }
 
 function placeMarkerOnCanvas(evt) {
@@ -52,8 +47,8 @@ function placeMarkerOnCanvas(evt) {
 	enableViewerCanvas(viewer2D);
 
 	marker.addEventListenerOnMarker("markerdown", startTracking);
-	marker.addEventListenerOnMarker("markerdrag", trackMarker);
-	marker.addEventListenerOnMarker("markerup", stopTracking);
+	// marker.addEventListenerOnMarker("markerdrag", trackMarker);
+	// marker.addEventListenerOnMarker("markerup", stopTracking);
 
 	updateCameraToMarker();
 
@@ -72,6 +67,9 @@ function placeMarkerOnCanvas(evt) {
 }
 
 function startTracking(evt) {
+	marker.addEventListenerOnMarker("markerdrag", trackMarker);
+	marker.addEventListenerOnMarker("markerup", stopTracking);
+
 	viewer3D.removeEventListener(Autodesk.Viewing.CAMERA_CHANGE_EVENT, updateMarkerToCamera);
 	updateCameraToMarker(false, false);
 }
@@ -84,7 +82,7 @@ function trackMarker(evt) {
 }
 
 function stopTracking(evt) {
-	marker.removeEventListenerOnMarker("markerdrag", startTracking);
+	marker.removeEventListenerOnMarker("markerdrag", trackMarker);
 	marker.removeEventListenerOnMarker("markerup", stopTracking);
 
 	viewer3D.addEventListener(Autodesk.Viewing.CAMERA_CHANGE_EVENT, updateMarkerToCamera);
@@ -105,20 +103,19 @@ function updateCameraToMarker(skipPosition, skipTarget) {
 	        x: position.x / viewport.width,
 	        y: position.y / viewport.height
 	    };
-	    console.log("update camera position ", clientToWorld(normedPoint));
+	    // console.log("update camera position ", clientToWorld(normedPoint));
 	    nav.setPosition(positionToVector3(clientToWorld(normedPoint)));
 	}
 
 	if (!(skipTarget)) {
 		var position = viewer3D.navigation.getPosition();
 		var direction = marker.getDirection();
-		console.log("update camera target ", direction);
+		// console.log("update camera target ", direction);
 		viewer3D.navigation.setTarget(positionToVector3([position.x+direction[0], position.y+direction[1], position.z]));
 	}
 }
 
 function updateMarkerToCamera() {
-
 	if (marker.isTracking() || marker.isRotating())
 		return;
 
@@ -130,10 +127,6 @@ function updateMarkerToCamera() {
 
 	marker.setPosition(newPos2D.x, newPos2D.y);
 	marker.setDirection([eye.x, eye.y]);
-
-	// var angle = (angleBetween([100, 1], [eye.x, eye.y])) * 180 / Math.PI;
-	// var rotatedDegree = 90 - angle;
-	// marker.rotate(rotatedDegree);
 }
 
 
@@ -268,6 +261,7 @@ function Marker(container, containerLeft, containerTop) {
 
 			} else if (isRotating) {
 				var d = directionMap.calcMouseDirection(evt.clientX, evt.clientY);
+				console.log("rotating direction ", d);
 				directionMap.currentDirection = d;
 				
 				var angleToxAxis = directionMap.angleBetween(d, [1,0]);
@@ -470,7 +464,7 @@ DirectionMap.prototype.setRotateCenter = function(clientX, clientY) {
 
 DirectionMap.prototype.calcMouseDirection = function(clientX, clientY) {
 	// var	subVec = [clientX-this.rotateCenter.x, clientY-this.rotateCenter.y];
-	var	subVec = [clientX-this.rotateCenter.x, this.rotateCenter.lastClientY-clientY];
+	var	subVec = [clientX-this.rotateCenter.x, this.rotateCenter.y-clientY];
 	return this.normalizeDirection(subVec);
 };
 
