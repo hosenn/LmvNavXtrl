@@ -53,6 +53,5 @@ function printHitResult(evt) {
 
 function printHitResult2D(evt) {
 	var estimatedpos = getHitTest(evt.clientX, evt.clientY, viewer2D, "2D");
-	clickToShow(estimatedpos);
 }
 
