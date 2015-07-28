@@ -14,22 +14,41 @@ body {
 	font: 'Open Sans';
 	font-size: 12px;
 	position: absolute;
+
+	-webkit-transition: all 0.2s ease-in-out;
+	-moz-transition: all 0.2s ease-in-out;
+	-o-transition: all 0.2s ease-in-out;
 }
 
 .viewer-panel {
-	width: 70%;
+/*	width: 70%;*/
+	width: 100%;
 	height: 100%;
 /*	float: right;*/
 	display: block;
-	left: 30%;
+/*	left: 30%;*/
 	position: absolute;
 }
 
 .viewer-box {
-	position: relative;
+	position: absolute;
 	width: 100%;
-	height: 50%;
+	height: 100%;
 }
+
+#viewer3D {
+	z-index: 99;
+}
+
+#viewer2D {
+	left: 69%;
+	top: 49%;
+	width: 30%;
+	height: 50%;
+	border: black 1px solid;
+	z-index: 100;
+}
+
 
 .control-title {
 	width: 100%;

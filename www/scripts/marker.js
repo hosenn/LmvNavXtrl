@@ -23,7 +23,7 @@ function enableViewerCanvas(viewer) {
 	if (activateToolName) {
 		viewer.toolController.activateTool(activateToolName);
 		activateToolName = null;
-		viewer.getToolbar().container.style.display = "block";
+		// viewer.getToolbar().container.style.display = "block";
 	}
 
 	if (viewer.viewCubeUi.homeViewContainer) {
@@ -435,7 +435,7 @@ Marker.prototype.removeEventListenerOnMarker = function(eventName, callFunc) {
 
 
 function DirectionMap(direction) {
-	var normLen = 100;
+	var normLen = 300;
 	this.getNormLen = function() {return normLen;};
 	this.currentDirection = direction || [0, normLen];
 

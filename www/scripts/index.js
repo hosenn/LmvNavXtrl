@@ -52,8 +52,14 @@ document.addEventListener("DOMContentLoaded", function(event) {
             //     alert("ERROR: Couldn't initialize main viewer!");
             //     console.log("ERROR Code: " + retCode);      // TBD: do real error handling here
             // }
-            viewer3D.addEventListener(Autodesk.Viewing.GEOMETRY_LOADED_EVENT, function (event) {
-                initializePanel();
+
+            // viewer3D.addEventListener(Autodesk.Viewing.GEOMETRY_LOADED_EVENT, function (event) {
+            //     initializePanel();
+            // });
+
+            viewer2D.addEventListener(Autodesk.Viewing.GEOMETRY_LOADED_EVENT, function (event) {
+                initializeMarker();
+                viewer3D.getToolbar().container.style.left = "0%";
             });
 
             viewer3D.start();
