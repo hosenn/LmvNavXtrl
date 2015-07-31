@@ -92,7 +92,6 @@ img {
 
 	-moz-box-shadow:    0 2px 5px -3px black;
     -webkit-box-shadow: 0 2px 5px -3px black;
-    -o-box-shadow: 		0 2px 5px -3px black;
     box-shadow:         0 2px 5px -3px black;
 }
 
@@ -131,6 +130,10 @@ img {
 	-webkit-box-shadow: inset -4px 0px 21px -7px rgb(0,0,0);
 	-moz-box-shadow: inset -4px 0px 21px -7px rgb(0,0,0);
 	box-shadow: inset -4px 0px 21px -7px rgb(0,0,0);
+}
+
+#saveBtn {
+	top: 130px;
 }
 
 .collapse-btn {
@@ -278,10 +281,14 @@ img {
 		padding-bottom: 20px;
 		width: 60%;
 		height: 100px;
-		border-bottom: rgba(97,103,97,1) 1px dashed;}
+/*		border-bottom: rgb(97,103,97) 1px dashed;
+*/	}
 		
 		.table-sublist .table-cell:after {
-			display: none;}
+			top: 10px;
+			position: relative;
+/*			display: none;
+*/		}
 
 		.table-sublist .table-cell img:hover {
 			cursor: pointer;
@@ -312,19 +319,47 @@ img {
 	z-index: 99;
 }
 
-#viewer2D {
-	left: 69%;
-	top: 49%;
+/*#viewer2D {
+*/
+.draggable {
+	left: 68%;
+	top: 44%;
 	width: 30%;
 	height: 50%;
-	border: black 1px solid;
-	z-index: 100;
+	max-width: 400px;
+	max-height: 300px;
+	z-index: 107;
+	position: absolute;
 
-	-moz-box-shadow:    0 2px 5px -3px gray;
-    -webkit-box-shadow: 0 2px 5px -3px gray;
-    box-shadow:         0 2px 5px -3px gray;
+	-moz-box-shadow:    1 3px 6px -3px gray;
+    -webkit-box-shadow: 1 3px 6px -3px gray;
+    box-shadow:         1 3px 6px -3px gray;
 }
 
+.draggable-nav {
+	height: 15px;
+	width: 100%;
+	top: 0px;
+	left: 0px;
+	position: absolute;
+	z-index: 109;
+	background-color: rgb(34, 37, 34);
+	cursor: pointer;
+
+	-moz-box-shadow:    0 3px 5px -3px black;
+    -webkit-box-shadow: 0 3px 5px -3px black;
+    box-shadow:         0 3px 5px -3px black;
+}
+
+.draggable-body {
+	top: 15px;
+	left: 0px;
+	right: 0px;
+	bottom: 0px;
+	position: absolute;
+	z-index: 108;
+	border: black 1px solid;
+}
 
 .control-title {
 	width: 100%;

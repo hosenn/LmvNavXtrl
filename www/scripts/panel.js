@@ -7,6 +7,9 @@ function initializeControlPanel() {
     var panelBtn = document.getElementById("panelBtn");
     panelBtn.addEventListener("click", toggleControlPanel);
 
+    var saveBtn = document.getElementById("saveBtn");
+    saveBtn.addEventListener("click", saveCurrentViewState);
+
     // var modelCells = document.querySelectorAll(".table-list .table-cell");
     // for (var i = 0; i < modelCells.length; i++) {
     //     var modelCell = modelCells[i];
@@ -25,6 +28,52 @@ function initializeControlPanel() {
     //         // toggleTableList(currentModel);
     //     });
     // };
+
+    var floatContainer = document.getElementsByClassName("draggable")[0];
+    var floatNav = floatContainer.firstElementChild;
+
+    var _prev_x = 0;
+    var _prev_y = 0;
+    var _selected = null;
+
+    floatNav.onmousedown = function (evt) {
+        _prev_x = evt.clientX;
+        _prev_y = evt.clientY;
+        _selected = this.parentElement;
+        document.addEventListener("mousemove", navmousemove);
+        document.addEventListener("mouseup", navmouseup);
+
+        // stop propagation
+        return true;
+    };
+
+    var navmousemove = function (evt) {
+        if (_selected === null)
+            return;
+
+        var next_left = _selected.offsetLeft + evt.clientX - _prev_x;
+        var next_top = _selected.offsetTop + evt.clientY - _prev_y;
+        var _bounding_left = _selected.parentElement.offsetWidth - _selected.offsetWidth;
+        var _bounding_top = _selected.parentElement.offsetHeight - _selected.offsetHeight;
+        if (next_left >= 0 && next_left < _bounding_left)
+            _selected.style.left = next_left + "px";
+        if (next_top >= 0 && next_top < _bounding_top)
+            _selected.style.top = next_top + "px";
+
+        _prev_x = evt.clientX;
+        _prev_y = evt.clientY;
+
+        // return true;
+    };
+
+    var navmouseup = function () {
+        _selected = null;
+        document.removeEventListener("mousemove", navmousemove);
+        document.removeEventListener("mouseup", navmouseup);
+
+        return false;
+    };
+
 
     var cellBtns = document.querySelectorAll(".table-list .table-cell .cell-btn");;
     for (var i = 0; i < cellBtns.length; i++) {
@@ -72,6 +121,9 @@ function toggleControlPanel() {
         this.style.left = "-4px";
         this.className = "collapse-btn right-round-btn icon icon-angle-circled-right";
 
+        this.nextElementSibling.style.left = "-4px";
+        this.nextElementSibling.className = "collapse-btn right-round-btn icon icon-plus";
+
         viewerPanel.style.left = "0px";
         viewerPanel.style.width = "100%";
 
@@ -81,6 +133,9 @@ function toggleControlPanel() {
 
         this.style.left = "calc(22% - 42px)";
         this.className = "collapse-btn left-round-btn icon icon-angle-circled-left";
+
+        this.nextElementSibling.style.left = "calc(22% - 42px)";
+        this.nextElementSibling.className = "collapse-btn left-round-btn icon icon-plus";
 
         viewerPanel.style.left = "22%";
         viewerPanel.style.width = "78%";
@@ -101,6 +156,7 @@ function toggleTableList(modelIndex) {
         // if (sublist.style.display == "none" || sublist.style.display == "")
             sublist.style.display = "block";
         var row = sublist.querySelectorAll(".table-cell")[0];
+        // console.log(row.offsetHeight);
         var tableHeight = modelStates[currentModel].length * (row.offsetHeight + 20);
         sublist.style.height = tableHeight + "px";
         cellBtn.className = "cell-btn icon icon-angle-down";
@@ -118,7 +174,6 @@ function populateFromLocalStorage() {
                 pushStateToTableList(dataURI, i, viewStates[j]);
             }
         } else {
-            console.log("emptyStates");
             var emptyStates = new Array(0);
             modelStates.push(emptyStates);
         }
@@ -134,6 +189,8 @@ function updateLocalStorage() {
 }
 
 function saveCurrentViewState() {
+    if (! markerPlaced)
+        return;
     var viewState = viewer3D.getState();
 
     var stateId = viewModels[currentModel].id + Date.now();
@@ -141,7 +198,7 @@ function saveCurrentViewState() {
     modelStates[currentModel].push(stateObj);
 
     viewer3D.getScreenShot(100, 100, function(blobURL) {
-        console.log(blobURL);
+
         var xhr = new XMLHttpRequest();
         xhr.open('GET', blobURL, true);
         xhr.responseType = 'blob';

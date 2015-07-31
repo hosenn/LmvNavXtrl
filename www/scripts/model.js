@@ -49,7 +49,7 @@ document.addEventListener("DOMContentLoaded", function(event) {
                 initializeMarker();
 
                 viewer2D.getToolbar().container.style.display = "none";
-                viewer3D.getToolbar().container.style.left = "0%";
+                // viewer3D.getToolbar().container.style.left = "0%";
             });
 
             viewer3D.start();

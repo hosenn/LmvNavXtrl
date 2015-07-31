@@ -74,8 +74,8 @@ function initializeMarker() {
 
 function placeMarkerOnCanvas(evt, skipViewerUpdate) {
 
-	var offsetLeft = (evt ? evt.clientX : 0) - viewer2D.navigation.getScreenViewport().left;
-	var offsetTop = (evt ? evt.clientY : 0) - viewer2D.navigation.getScreenViewport().top;
+	var offsetLeft = (evt ? evt.clientX : 0) - viewer2D.container.getBoundingClientRect().left;
+	var offsetTop = (evt ? evt.clientY : 0) - viewer2D.container.getBoundingClientRect().top;
 
 	marker.setPosition(offsetLeft, offsetTop);
 	marker.showMarker();
@@ -126,10 +126,11 @@ function updateCameraToMarker(skipPosition, skipTarget) {
 	if (!(skipPosition)) {
 
 		var position = marker.getPosition();
-		var viewport = viewer2D.navigation.getScreenViewport();
+		// var viewport = viewer2D.navigation.getScreenViewport();
+		var boundingRect = viewer2D.container.getBoundingClientRect();
 	    var normedPoint = {
-	        x: position.x / viewport.width,
-	        y: position.y / viewport.height
+	        x: position.x / boundingRect.width, //viewport.width,
+	        y: position.y / boundingRect.height //viewport.height
 	    };
 	    var worldPos = clientToWorld(normedPoint);
 	    if (worldPos) {
@@ -271,12 +272,12 @@ function Marker(container, cleft, ctop, customMarker) {
 	var containerLeft = cleft;
 	var containerTop = ctop;
 
-	window.addEventListener("resize", function() {
+	function getScreenOffset() {
 		var containerDiv = overlayDiv;
 	    for (containerLeft=0, containerTop=0;
 	         containerDiv != null;
 	         containerLeft += containerDiv.offsetLeft, containerTop += containerDiv.offsetTop, containerDiv = containerDiv.offsetParent);
-	});
+	}
 
 	var onmarkerdrag= function(evt) {
 		var currentTimestamp = Date.now();
@@ -285,6 +286,7 @@ function Marker(container, cleft, ctop, customMarker) {
 				var deltaX = evt.clientX - lastClientX;
 				// var deltaY = evt.clientY - lastClientY;
 				var deltaY = lastClientY - evt.clientY; // mouse Y coord system opposite to viewer
+				getScreenOffset();
 				translateTo(evt.clientX-containerLeft, evt.clientY-containerTop);
 
 				if (autoUpdateDirection) {
