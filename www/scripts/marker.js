@@ -1,5 +1,6 @@
 var marker;
 var activateToolName;
+var markerPlaced;
 
 var lastFloorIndex = 0;
 var currentFloorIndex = 0;
@@ -34,33 +35,11 @@ function enableViewerCanvas(viewer) {
 }
 
 function initializeMarker() {
+
 	marker = new Marker(viewer2D.container, viewer2D.container.getBoundingClientRect().left, viewer2D.container.getBoundingClientRect().top);
+
+	viewer2D.setViewFromViewBox(metadata[viewModels[currentModel].id].viewboxes[0].box);
 	
-	viewer2D.setViewFromViewBox(viewboxes[0].box);
-	disableViewerCanvas(viewer2D);
-	
-	marker.hideMarker();
-	marker.addEventListenerOnMarker("canvasclick", placeMarkerOnCanvas);
-	marker.toggleCanvas(true);
-}
-
-function placeMarkerOnCanvas(evt) {
-
-	var offsetLeft = evt.clientX - viewer2D.navigation.getScreenViewport().left;
-	var offsetTop = evt.clientY - viewer2D.navigation.getScreenViewport().top;
-
-	marker.setPosition(offsetLeft, offsetTop);
-	marker.showMarker();
-	marker.removeEventListenerOnMarker("canvasclick", placeMarkerOnCanvas);
-	marker.toggleCanvas(false);
-	enableViewerCanvas(viewer2D);
-
-	marker.addEventListenerOnMarker("markerdown", startTracking);
-	// marker.addEventListenerOnMarker("markerdrag", trackMarker);
-	// marker.addEventListenerOnMarker("markerup", stopTracking);
-
-	updateCameraToMarker();
-
 	var updateMarkerOnCanvas = function() {
 		var position = viewer3D.navigation.getPosition();
 		var paperPos = worldToPaper(position);
@@ -74,6 +53,41 @@ function placeMarkerOnCanvas(evt) {
     viewer2D.addEventListener(Autodesk.Viewing.VIEWER_RESIZE_EVENT, updateMarkerOnCanvas);
 
     viewer3D.addEventListener(Autodesk.Viewing.CAMERA_CHANGE_EVENT, updateMarkerToCamera);
+
+	marker.addEventListenerOnMarker("markerdown", startTracking);
+	// marker.addEventListenerOnMarker("markerdrag", trackMarker);
+	// marker.addEventListenerOnMarker("markerup", stopTracking);
+
+
+	if (markerPlaced) {
+		updateMarkerToCamera();
+		return;
+	}
+
+	disableViewerCanvas(viewer2D);
+	marker.hideMarker();
+	marker.addEventListenerOnMarker("canvasclick", placeMarkerOnCanvas);
+	marker.toggleCanvas(true);
+	markerPlaced = false;
+
+}
+
+function placeMarkerOnCanvas(evt, skipViewerUpdate) {
+
+	var offsetLeft = (evt ? evt.clientX : 0) - viewer2D.navigation.getScreenViewport().left;
+	var offsetTop = (evt ? evt.clientY : 0) - viewer2D.navigation.getScreenViewport().top;
+
+	marker.setPosition(offsetLeft, offsetTop);
+	marker.showMarker();
+	markerPlaced = true;
+	marker.removeEventListenerOnMarker("canvasclick", placeMarkerOnCanvas);
+	marker.toggleCanvas(false);
+	enableViewerCanvas(viewer2D);
+
+
+	if (!(skipViewerUpdate))
+		updateCameraToMarker();
+
     
 }
 
@@ -153,6 +167,7 @@ function updateMarkerToCamera() {
 		marker.setPosition(newPos2D.x, newPos2D.y);
 		currentFloorIndex = paperPos.boxIndex;
 		if (currentFloorIndex != lastFloorIndex) {
+			var viewboxes = metadata[viewModels[currentModel].id].viewboxes;
 			viewer2D.setViewFromViewBox(viewboxes[currentFloorIndex].box);
 		}
 
@@ -161,7 +176,7 @@ function updateMarkerToCamera() {
 }
 
 
-function Marker(container, containerLeft, containerTop) {
+function Marker(container, cleft, ctop, customMarker) {
 
 	var overlayDiv = document.createElement("div");
     overlayDiv.style.top = "0";
@@ -170,6 +185,7 @@ function Marker(container, containerLeft, containerTop) {
     overlayDiv.style.bottom = "0";
     overlayDiv.style.zIndex = "998";
     overlayDiv.style.position = "absolute";
+    overlayDiv.style.pointerEvents = "none";
     overlayDiv.id = "markerlayer";
 
     var svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
@@ -183,9 +199,11 @@ function Marker(container, containerLeft, containerTop) {
     svg.style.cursor = "pointer";
     svg.id = "marker";
 
-    var arrow = document.createElementNS('http://www.w3.org/2000/svg', 'polygon');
-    arrow.setAttribute("points", "0,16 4,0 8,16");
-    arrow.style.fill = "rgb(196, 20, 26)";
+    var arrow = customMarker || document.createElementNS('http://www.w3.org/2000/svg', 'polygon');
+    if (!customMarker) {
+    	arrow.setAttribute("points", "0,16 4,0 8,16");
+    	arrow.style.fill = "rgb(196, 20, 26)";
+    }
 
     svg.appendChild(arrow);
     overlayDiv.appendChild(svg);
@@ -205,8 +223,8 @@ function Marker(container, containerLeft, containerTop) {
 	};
 
 	function translateBy(translateX, translateY) {
-		var newOffsetLeft = this.marker.offsetLeft + translateX;
-		var newOffsetTop = this.marker.offsetTop + translateY;
+		var newOffsetLeft = svg.offsetLeft + translateX;
+		var newOffsetTop = svg.offsetTop + translateY;
 		svg.style.left = newOffsetLeft + "px";
 		svg.style.top = newOffsetTop + "px";
 	};
@@ -249,6 +267,16 @@ function Marker(container, containerLeft, containerTop) {
 			cb(evt);
 		};
 	}
+
+	var containerLeft = cleft;
+	var containerTop = ctop;
+
+	window.addEventListener("resize", function() {
+		var containerDiv = overlayDiv;
+	    for (containerLeft=0, containerTop=0;
+	         containerDiv != null;
+	         containerLeft += containerDiv.offsetLeft, containerTop += containerDiv.offsetTop, containerDiv = containerDiv.offsetParent);
+	});
 
 	var onmarkerdrag= function(evt) {
 		var currentTimestamp = Date.now();
@@ -310,6 +338,7 @@ function Marker(container, containerLeft, containerTop) {
 		isTracking = false;
 		isRotating = false;
 
+		overlayDiv.style.cursor = "auto";
 		overlayDiv.style.pointerEvents = "none";
 		overlayDiv.removeEventListener("mousemove", onmarkerdrag);
 		overlayDiv.removeEventListener("mouseup", onmarkerup);
@@ -333,7 +362,7 @@ function Marker(container, containerLeft, containerTop) {
 		}
 
 		overlayDiv.style.pointerEvents = "auto";
-		overlayDiv.style.cursor = "auto";
+		overlayDiv.style.cursor = "default";
 		overlayDiv.addEventListener("mousemove", onmarkerdrag, false);
 		overlayDiv.addEventListener("mouseup", onmarkerup, false);
 
@@ -385,6 +414,10 @@ function Marker(container, containerLeft, containerTop) {
 	this.getExtHandler = function() {
 		return externalEvtHandlers;
 	};
+
+	this.setCursorOffset = function() {
+
+	}
 }
 
 Marker.prototype.hideMarker = function() {
@@ -404,8 +437,8 @@ Marker.prototype.getDirection = function() {
 };
 
 Marker.prototype.setPosition = function(offsetLeft, offsetTop) {
-	this.marker.style.left = offsetLeft + "px";
-	this.marker.style.top = offsetTop + "px";
+	this.marker.style.left = offsetLeft - this.marker.offsetWidth / 2 + "px";
+	this.marker.style.top = offsetTop - this.marker.offsetHeight / 2 + "px";
 };
 
 Marker.prototype.setDirection = function(newDirection) {
@@ -498,26 +531,34 @@ DirectionMap.prototype.calcMouseDirection = function(clientX, clientY) {
 	return this.normalizeDirection(subVec);
 };
 
-
-var viewboxes = [
-	{box: [61.30275909098552 , 572.8253921735151, 411.29704813713875, 251.63262845992332], floor: 0}, 
-	// {box: [426.01228910438573, 572.8253921735151, 718.0903793548525, 251.63262845992332], floor: 1}
-	{box: [411.29704813713875, 572.8253921735151, 718.0903793548525, 251.63262845992332], floor: 1}, 
-];
-
-var floorHeight = 10;
-var floorBase = -5;
-
-var scale = 3.0529685252835925;
-var yoffset = 305.5828538654896;
-var xoffset = 173.35610564383717;
-var paperZ = -0.8462999999999852;
-
-// var floorZ = 0;
-// var floorChangeX = 426.01228910438573;
-// var floorChangeOffsetWidth = -349.99428904615326;
+var metadata = {
+	"racsimple": {
+		viewboxes: [
+			{box: [61.30275909098552 , 572.8253921735151, 411.29704813713875, 251.63262845992332], floor: 0}, 
+			{box: [411.29704813713875, 572.8253921735151, 718.0903793548525, 251.63262845992332], floor: 1}, 
+		],
+		floorHeight: 10,
+		floorBase: -5,
+		scale: 3.0529685252835925,
+		yoffset: 305.5828538654896,
+		xoffset: 173.35610564383717,
+		paperZ: -0.8462999999999852
+	},
+	"racadvanced": {
+		viewboxes: [
+			{box: [147.11470672360943 , 708.9971656430058, 876.6206449475018, 167.1180614813956], floor: 0}, 
+		],
+		floorHeight: 10,
+		floorBase: -17,
+		scale: 3.0487993483101437,
+		yoffset: 438.1741498717732,
+		xoffset: 742.2887834445044,
+		paperZ: -1.1969100000000026
+	}
+};
 
 function getPaperViewBox(point) {
+	var viewboxes = metadata[viewModels[currentModel].id].viewboxes;
 	for (var i = viewboxes.length - 1; i >= 0; i--) {
 		var viewbox = viewboxes[i].box;
 		if (point.x >= viewbox[0] && point.x <= viewbox[2] &&
@@ -530,14 +571,15 @@ function getPaperViewBox(point) {
 }
 
 function worldToPaper(position) {
-	var paperPos = {x:position.x * scale + xoffset, y:position.y * scale + yoffset, z:paperZ};
+	var paperPos = {x:position.x * metadata[viewModels[currentModel].id].scale + metadata[viewModels[currentModel].id].xoffset, y:position.y * metadata[viewModels[currentModel].id].scale + metadata[viewModels[currentModel].id].yoffset, z:metadata[viewModels[currentModel].id].paperZ};
 
-	var floor = Math.floor((position.z - floorBase) / floorHeight);
+	var floor = Math.floor((position.z - metadata[viewModels[currentModel].id].floorBase) / metadata[viewModels[currentModel].id].floorHeight);
 	floor = floor < 0 ? 0 : floor;
-	floor = floor >= viewboxes.length ? viewboxes.length - 1 : floor;
-	var viewbox = viewboxes[floor];
-	var xoffsetBox = viewbox.box[0] - viewboxes[0].box[0];
-    var yoffsetBox = viewbox.box[1] - viewboxes[0].box[1];
+	floor = floor >= metadata[viewModels[currentModel].id].viewboxes.length ? metadata[viewModels[currentModel].id].viewboxes.length - 1 : floor;
+
+	var viewbox = metadata[viewModels[currentModel].id].viewboxes[floor];
+	var xoffsetBox = viewbox.box[0] - metadata[viewModels[currentModel].id].viewboxes[0].box[0];
+    var yoffsetBox = viewbox.box[1] - metadata[viewModels[currentModel].id].viewboxes[0].box[1];
 
     paperPos.x += xoffsetBox;
     paperPos.y += yoffsetBox;
@@ -557,10 +599,10 @@ function clientToWorld(normedPoint) {
     if (viewbox == null)
     	return null;
 
-	var xoffsetBox = viewbox.box[0] - viewboxes[0].box[0];
-    var yoffsetBox = viewbox.box[1] - viewboxes[0].box[1];
+	var xoffsetBox = viewbox.box[0] - metadata[viewModels[currentModel].id].viewboxes[0].box[0];
+    var yoffsetBox = viewbox.box[1] - metadata[viewModels[currentModel].id].viewboxes[0].box[1];
 
-    return {x:(paperPos.x - xoffset - xoffsetBox) / scale, y:(paperPos.y - yoffset - yoffsetBox) / scale, z:(viewbox.floor * floorHeight) + (floorHeight/2 + floorBase)};
+    return {x:(paperPos.x - metadata[viewModels[currentModel].id].xoffset - xoffsetBox) / metadata[viewModels[currentModel].id].scale, y:(paperPos.y - metadata[viewModels[currentModel].id].yoffset - yoffsetBox) / metadata[viewModels[currentModel].id].scale, z:(viewbox.floor * metadata[viewModels[currentModel].id].floorHeight) + (metadata[viewModels[currentModel].id].floorHeight/2 + metadata[viewModels[currentModel].id].floorBase)};
 }
 
 function clientToPaper(normedPoint) {
