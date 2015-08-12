@@ -11,11 +11,10 @@ var STABLELIMIT = 1;
 function disableViewerCanvas(viewer) {
    	activateToolName = viewer.toolController.getActiveToolName();
 	viewer.toolController.deactivateTool(activateToolName);
-	viewer.getToolbar().container.style.display = "none";
+    viewer.toolbar.setVisible(false);
 
 	if (viewer.viewCubeUi.homeViewContainer) {
 		viewer.viewCubeUi.infoButton.style.display = "none";
-		// viewer.viewCubeUi.homeViewContainer.style.display = "none";
 		viewer.displayViewCube(false, true);	//hide viewcube and update preference
 	}
 }
@@ -24,12 +23,11 @@ function enableViewerCanvas(viewer) {
 	if (activateToolName) {
 		viewer.toolController.activateTool(activateToolName);
 		activateToolName = null;
-		// viewer.getToolbar().container.style.display = "block";
+	    // viewer.toolbar.setVisible(true);
 	}
 
 	if (viewer.viewCubeUi.homeViewContainer) {
 		viewer.viewCubeUi.infoButton.style.display = "block";
-		// viewer.viewCubeUi.homeViewContainer.style.display = "block";
 		viewer.displayViewCube(true, true);
 	}
 }
@@ -39,25 +37,11 @@ function initializeMarker() {
 	marker = new Marker(viewer2D.container, viewer2D.container.getBoundingClientRect().left, viewer2D.container.getBoundingClientRect().top);
 
 	viewer2D.setViewFromViewBox(metadata[viewModels[currentModel].id].viewboxes[0].box);
-	
-	var updateMarkerOnCanvas = function() {
-		var position = viewer3D.navigation.getPosition();
-		var paperPos = worldToPaper(position);
-		if (paperPos) {
-			var newPos2D = projectToViewport(paperPos.pos, viewer2D.getCamera());
-	    	marker.setPosition(newPos2D.x, newPos2D.y);
-	    }
-	}
 
 	viewer2D.addEventListener(Autodesk.Viewing.CAMERA_CHANGE_EVENT, updateMarkerOnCanvas);
     viewer2D.addEventListener(Autodesk.Viewing.VIEWER_RESIZE_EVENT, updateMarkerOnCanvas);
 
-    viewer3D.addEventListener(Autodesk.Viewing.CAMERA_CHANGE_EVENT, updateMarkerToCamera);
-
 	marker.addEventListenerOnMarker("markerdown", startTracking);
-	// marker.addEventListenerOnMarker("markerdrag", trackMarker);
-	// marker.addEventListenerOnMarker("markerup", stopTracking);
-
 
 	if (markerPlaced) {
 		updateMarkerToCamera();
@@ -65,11 +49,20 @@ function initializeMarker() {
 	}
 
 	disableViewerCanvas(viewer2D);
-	marker.hideMarker();
+
+	//marker.hideMarker();
 	marker.addEventListenerOnMarker("canvasclick", placeMarkerOnCanvas);
 	marker.toggleCanvas(true);
 	markerPlaced = false;
+}
 
+function updateMarkerOnCanvas() {
+	var position = viewer3D.navigation.getPosition();
+	var paperPos = worldToPaper(position);
+	if (paperPos) {
+		var newPos2D = projectToViewport(paperPos.pos, viewer2D.getCamera());
+    	marker.setPosition(newPos2D.x, newPos2D.y);
+    }
 }
 
 function placeMarkerOnCanvas(evt, skipViewerUpdate) {
@@ -84,11 +77,17 @@ function placeMarkerOnCanvas(evt, skipViewerUpdate) {
 	marker.toggleCanvas(false);
 	enableViewerCanvas(viewer2D);
 
-
 	if (!(skipViewerUpdate))
 		updateCameraToMarker();
 
-    
+        // check the viewer transition, add the listener when done
+    var checkTransition = setInterval(function() {
+        if (!(viewer3D.navigation.getTransitionActive())) {
+            clearInterval(checkTransition);
+            viewer3D.addEventListener(Autodesk.Viewing.CAMERA_CHANGE_EVENT, updateMarkerToCamera);
+        }
+    }, 150);
+
 }
 
 function startTracking(evt) {
@@ -126,30 +125,28 @@ function updateCameraToMarker(skipPosition, skipTarget) {
 	if (!(skipPosition)) {
 
 		var position = marker.getPosition();
-		// var viewport = viewer2D.navigation.getScreenViewport();
 		var boundingRect = viewer2D.container.getBoundingClientRect();
 	    var normedPoint = {
-	        x: position.x / boundingRect.width, //viewport.width,
-	        y: position.y / boundingRect.height //viewport.height
+	        x: position.x / boundingRect.width,
+	        y: position.y / boundingRect.height
 	    };
 	    var worldPos = clientToWorld(normedPoint);
 	    if (worldPos) {
-	    		// for stablility
+
 	    	if (lastPosition) {
 	    		worldPos.x = Math.abs(worldPos.x - lastPosition.x) < STABLELIMIT ? lastPosition.x : worldPos.x;
 	    		worldPos.y = Math.abs(worldPos.y - lastPosition.y) < STABLELIMIT ? lastPosition.y : worldPos.y;
 	    	}
-	    	//console.log("update camera position ", position);
+
 	    	nav.setPosition(positionToVector3(worldPos));
 	    	lastPosition = worldPos;
 	    } 
-	    // else return;
 	}
 
 	if (!(skipTarget)) {
 		var position = viewer3D.navigation.getPosition();
 		var direction = marker.getDirection();
-		// console.log("update camera target ", direction);
+
 		viewer3D.navigation.setTarget(positionToVector3([position.x+direction[0], position.y+direction[1], position.z]));
 	}
 }
@@ -165,6 +162,7 @@ function updateMarkerToCamera() {
 	var paperPos = worldToPaper(position);
 	if (paperPos) {
 		var newPos2D = projectToViewport(paperPos.pos, viewer2D.getCamera());
+
 		marker.setPosition(newPos2D.x, newPos2D.y);
 		currentFloorIndex = paperPos.boxIndex;
 		if (currentFloorIndex != lastFloorIndex) {
@@ -194,7 +192,6 @@ function Marker(container, cleft, ctop, customMarker) {
     svg.style.height = "16px";
     svg.style.top = "0px";
     svg.style.left = "0px";
-    // svg.style.display = "none";
     svg.style.position = "absolute";
     svg.style.pointerEvents = "visible";
     svg.style.cursor = "pointer";
@@ -224,8 +221,9 @@ function Marker(container, cleft, ctop, customMarker) {
 	};
 
 	function translateBy(translateX, translateY) {
-		var newOffsetLeft = svg.offsetLeft + translateX;
-		var newOffsetTop = svg.offsetTop + translateY;
+			// firefox does not support offsetLeft for SVG element
+		var newOffsetLeft = svg.getBBox().x + translateX;
+		var newOffsetTop = svg.getBBox().y + translateY;
 		svg.style.left = newOffsetLeft + "px";
 		svg.style.top = newOffsetTop + "px";
 	};
@@ -284,7 +282,6 @@ function Marker(container, cleft, ctop, customMarker) {
 		if (currentTimestamp - lastTimestamp > REFRESHINTERVAL) {
 			if (isTracking) {
 				var deltaX = evt.clientX - lastClientX;
-				// var deltaY = evt.clientY - lastClientY;
 				var deltaY = lastClientY - evt.clientY; // mouse Y coord system opposite to viewer
 				getScreenOffset();
 				translateTo(evt.clientX-containerLeft, evt.clientY-containerTop);
@@ -354,7 +351,6 @@ function Marker(container, cleft, ctop, customMarker) {
 			isTracking = false;
 
 			directionMap.setRotateCenter(evt.clientX, evt.clientY);
-			//directionMap.setRotateCenter(pageLeft + this.offsetLeft, pageTop + this.offsetTop);
 
 		} else {
 			isRotating = false;
@@ -431,7 +427,17 @@ Marker.prototype.showMarker = function() {
 };
 
 Marker.prototype.getPosition = function() {
-	return {x:this.marker.offsetLeft, y:this.marker.offsetTop};
+	// return {x:this.marker.offsetLeft, y:this.marker.offsetTop};
+
+	// workaround here
+	// offsetLeft and offsetTop doesn't work for svg elements in Firefox
+	var cssLeft = this.marker.style.left;
+	var cssTop = this.marker.style.top;
+
+	var offsetLeft = parseFloat(cssLeft.substring(0, cssLeft.length-2));
+	var offsetTop = parseFloat(cssTop.substring(0, cssTop.length-2));
+
+	return {x:offsetLeft, y:offsetTop};
 };
 
 Marker.prototype.getDirection = function() {
@@ -439,8 +445,11 @@ Marker.prototype.getDirection = function() {
 };
 
 Marker.prototype.setPosition = function(offsetLeft, offsetTop) {
-	this.marker.style.left = offsetLeft - this.marker.offsetWidth / 2 + "px";
-	this.marker.style.top = offsetTop - this.marker.offsetHeight / 2 + "px";
+
+	var boundingRect = this.marker.getBBox();
+
+	this.marker.style.left = offsetLeft - boundingRect.width / 2 + "px";
+	this.marker.style.top = offsetTop - boundingRect.height / 2 + "px";
 };
 
 Marker.prototype.setDirection = function(newDirection) {
@@ -499,7 +508,6 @@ DirectionMap.prototype.angleBetween = function(d1, d2) {
 	if (d2[1] < 0)
 		angle2 = 2*Math.PI - angle2;
 
-	//return Math.abs(angle1-angle2);
 	return angle1-angle2;
 };
 
@@ -528,36 +536,11 @@ DirectionMap.prototype.setRotateCenter = function(clientX, clientY) {
 };
 
 DirectionMap.prototype.calcMouseDirection = function(clientX, clientY) {
-	// var	subVec = [clientX-this.rotateCenter.x, clientY-this.rotateCenter.y];
 	var	subVec = [clientX-this.rotateCenter.x, this.rotateCenter.y-clientY];
 	return this.normalizeDirection(subVec);
 };
 
-var metadata = {
-	"racsimple": {
-		viewboxes: [
-			{box: [61.30275909098552 , 572.8253921735151, 411.29704813713875, 251.63262845992332], floor: 0}, 
-			{box: [411.29704813713875, 572.8253921735151, 718.0903793548525, 251.63262845992332], floor: 1}, 
-		],
-		floorHeight: 10,
-		floorBase: -5,
-		scale: 3.0529685252835925,
-		yoffset: 305.5828538654896,
-		xoffset: 173.35610564383717,
-		paperZ: -0.8462999999999852
-	},
-	"racadvanced": {
-		viewboxes: [
-			{box: [147.11470672360943 , 708.9971656430058, 876.6206449475018, 167.1180614813956], floor: 0}, 
-		],
-		floorHeight: 10,
-		floorBase: -17,
-		scale: 3.0487993483101437,
-		yoffset: 438.1741498717732,
-		xoffset: 742.2887834445044,
-		paperZ: -1.1969100000000026
-	}
-};
+var metadata;
 
 function getPaperViewBox(point) {
 	var viewboxes = metadata[viewModels[currentModel].id].viewboxes;

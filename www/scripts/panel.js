@@ -1,8 +1,38 @@
 var modelStates = [];
 var resizeEvt;
 
+function loadModelList() {
+
+    var list = document.querySelector(".control-panel .table-list");    
+    for (var i = 0; i < viewModels.length; i++) {
+
+        var modelId = "model" + i;
+        var cell = document.createElement("div");
+        cell.className = "table-cell";
+        cell.id = "model" + i;
+
+        var cellBtn = document.createElement("div");
+        cellBtn.className = "cell-btn icon icon-angle-right";
+
+        var cellLabel = document.createElement("div");
+        cellLabel.className = "cell-label";
+        cellLabel.innerHTML = viewModels[i].label;
+
+        cell.appendChild(cellBtn);
+        cell.appendChild(cellLabel);
+
+        var sublist = document.createElement("div");
+        sublist.className = "table-sublist";
+
+        list.appendChild(cell);
+        list.appendChild(sublist);
+    };
+
+}
+
 function initializeControlPanel() {
-    var controlPanel = document.getElementsByClassName("control-panel")[0];
+
+    loadModelList();
 
     var panelBtn = document.getElementById("panelBtn");
     panelBtn.addEventListener("click", toggleControlPanel);
@@ -10,28 +40,7 @@ function initializeControlPanel() {
     var saveBtn = document.getElementById("saveBtn");
     saveBtn.addEventListener("click", saveCurrentViewState);
 
-    // var modelCells = document.querySelectorAll(".table-list .table-cell");
-    // for (var i = 0; i < modelCells.length; i++) {
-    //     var modelCell = modelCells[i];
-    //     modelCell.addEventListener("click", function() {
-    //         if (viewModels[currentModel].id !== this.id) {
-    //             for (var i = 0; i < viewModels.length; i++) {
-    //                 if (this.id === viewModels[i].id) {
-    //                     currentModel = i;
-    //                     viewer2D.container.removeChild(marker.layer);
-    //                     loadDocument(viewModels[currentModel].urn);
-    //                     markerPlaced = false;
-    //                     break;
-    //                 }
-    //             };
-    //         }
-    //         // toggleTableList(currentModel);
-    //     });
-    // };
-
-    var floatContainer = document.getElementsByClassName("draggable")[0];
-    var floatNav = floatContainer.firstElementChild;
-
+    var floatNav = document.getElementsByClassName("draggable")[0].firstElementChild;
     var _prev_x = 0;
     var _prev_y = 0;
     var _selected = null;
@@ -63,7 +72,7 @@ function initializeControlPanel() {
         _prev_x = evt.clientX;
         _prev_y = evt.clientY;
 
-        // return true;
+        return true;
     };
 
     var navmouseup = function () {
@@ -103,9 +112,9 @@ function initializeControlPanel() {
         viewer2D.resize();
     });
 
-    // window.addEventListener("beforeunload", function() {
-    //     updateLocalStorage();
-    // });
+    window.addEventListener("beforeunload", function() {
+        updateLocalStorage();
+    });
 
     populateFromLocalStorage();
 }
@@ -154,9 +163,9 @@ function toggleTableList(modelIndex) {
         cellBtn.className = "cell-btn icon icon-angle-right";
     } else if (modelStates[currentModel].length > 0){
         // if (sublist.style.display == "none" || sublist.style.display == "")
-            sublist.style.display = "block";
+        sublist.style.display = "block";
         var row = sublist.querySelectorAll(".table-cell")[0];
-        // console.log(row.offsetHeight);
+
         var tableHeight = modelStates[currentModel].length * (row.offsetHeight + 20);
         sublist.style.height = tableHeight + "px";
         cellBtn.className = "cell-btn icon icon-angle-down";
@@ -224,25 +233,12 @@ function pushStateToTableList(blobURL, modelIndex, stateObj) {
     img.src = blobURL;
     img.id = stateObj.id;
     img.onclick = function(evt) {
-        // var viewStates = modelStates[currentModel];
-        // for (var i = 0; i < viewStates.length; i++) {
-        //     if (this.id === viewStates[i].id) {
-        //         // restoreMakerFromState(viewStates[i].state);
-        //         if (!markerPlaced)
-        //             placeMarkerOnCanvas(null, true);
-        //         viewer3D.restoreState(viewState);
-        //         break;
-        //     }
-        // }
-
-        // var cellId = this.parentElement.parentElement.previousElementSibling.id;
-        // var modelIndex = parseInt(cellId.substring(cellId.length-1, cellId.length));
 
         if (modelIndex != currentModel) {
             currentModel = modelIndex;
             viewer2D.container.removeChild(marker.layer);
             loadDocument(viewModels[currentModel].urn, function () {
-                // placeMarkerOnCanvas(null, true);
+
                 markerPlaced = true;
                 viewer3D.restoreState(stateObj.state);
             });
@@ -260,6 +256,16 @@ function pushStateToTableList(blobURL, modelIndex, stateObj) {
     sublist.style.height = tableHeight + "px";
 }
 
+function pushToLocalStorage(blob, name) {
+    var reader = new FileReader();
+    reader.onload = function (evt) {
+        var fileUploadData = evt.target.result;
+        localStorage.setItem(name, fileUploadData);  
+    }
+    reader.readAsDataURL(blob);
+}
+
+/*
 function uploadToServer(blob, name) {
     var request = new XMLHttpRequest();
     var params = JSON.stringify({imageName:name});
@@ -271,7 +277,7 @@ function uploadToServer(blob, name) {
             console.log("success ", e.target.response);
             var reader = new FileReader();
             reader.onload = function (evt) {
-                // console.log("blob read success");
+
                 var fileUploadData = evt.target.result;
                 var request = new XMLHttpRequest();
                 request.open(
@@ -289,12 +295,4 @@ function uploadToServer(blob, name) {
     
     request.send(params);
 }
-
-function pushToLocalStorage(blob, name) {
-    var reader = new FileReader();
-    reader.onload = function (evt) {
-        var fileUploadData = evt.target.result;
-        localStorage.setItem(name, fileUploadData);  
-    }
-    reader.readAsDataURL(blob);
-}
+*/
