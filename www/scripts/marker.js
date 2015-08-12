@@ -34,7 +34,7 @@ function enableViewerCanvas(viewer) {
 
 function initializeMarker() {
 
-	marker = new Marker(viewer2D.container, viewer2D.container.getBoundingClientRect().left, viewer2D.container.getBoundingClientRect().top);
+	marker = new Marker(viewer2D.container);
 
 	viewer2D.setViewFromViewBox(metadata[viewModels[currentModel].id].viewboxes[0].box);
 
@@ -50,7 +50,7 @@ function initializeMarker() {
 
 	disableViewerCanvas(viewer2D);
 
-	//marker.hideMarker();
+	marker.hideMarker();
 	marker.addEventListenerOnMarker("canvasclick", placeMarkerOnCanvas);
 	marker.toggleCanvas(true);
 	markerPlaced = false;
@@ -175,7 +175,7 @@ function updateMarkerToCamera() {
 }
 
 
-function Marker(container, cleft, ctop, customMarker) {
+function Marker(container, customMarker) {
 
 	var overlayDiv = document.createElement("div");
     overlayDiv.style.top = "0";
@@ -267,24 +267,13 @@ function Marker(container, cleft, ctop, customMarker) {
 		};
 	}
 
-	var containerLeft = cleft;
-	var containerTop = ctop;
-
-	function getScreenOffset() {
-		var containerDiv = overlayDiv;
-	    for (containerLeft=0, containerTop=0;
-	         containerDiv != null;
-	         containerLeft += containerDiv.offsetLeft, containerTop += containerDiv.offsetTop, containerDiv = containerDiv.offsetParent);
-	}
-
 	var onmarkerdrag= function(evt) {
 		var currentTimestamp = Date.now();
 		if (currentTimestamp - lastTimestamp > REFRESHINTERVAL) {
 			if (isTracking) {
 				var deltaX = evt.clientX - lastClientX;
 				var deltaY = lastClientY - evt.clientY; // mouse Y coord system opposite to viewer
-				getScreenOffset();
-				translateTo(evt.clientX-containerLeft, evt.clientY-containerTop);
+				translateTo(evt.clientX-container.getBoundingClientRect().left, evt.clientY-container.getBoundingClientRect().top);
 
 				if (autoUpdateDirection) {
 					var newDirection = [deltaX, deltaY];
@@ -446,6 +435,9 @@ Marker.prototype.getDirection = function() {
 
 Marker.prototype.setPosition = function(offsetLeft, offsetTop) {
 
+	if (this.marker.style.display === "none")
+		this.showMarker();
+	
 	var boundingRect = this.marker.getBBox();
 
 	this.marker.style.left = offsetLeft - boundingRect.width / 2 + "px";
@@ -540,7 +532,6 @@ DirectionMap.prototype.calcMouseDirection = function(clientX, clientY) {
 	return this.normalizeDirection(subVec);
 };
 
-var metadata;
 
 function getPaperViewBox(point) {
 	var viewboxes = metadata[viewModels[currentModel].id].viewboxes;

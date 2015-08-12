@@ -8,6 +8,8 @@ var currentModel = 0;
 var viewer3D;
 var viewer2D;
 
+var metadata;
+
 var _blockEventMain = false;
 var _blockEventSecondary = false;
 
