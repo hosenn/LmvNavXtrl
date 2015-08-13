@@ -8,6 +8,8 @@ var currentFloorIndex = 0;
 var lastPosition;
 var STABLELIMIT = 1;
 
+
+	// disable user interaction in the given viewer
 function disableViewerCanvas(viewer) {
    	activateToolName = viewer.toolController.getActiveToolName();
 	viewer.toolController.deactivateTool(activateToolName);
@@ -19,6 +21,7 @@ function disableViewerCanvas(viewer) {
 	}
 }
 
+	// enable user interaction in the given viewer
 function enableViewerCanvas(viewer) {
 	if (activateToolName) {
 		viewer.toolController.activateTool(activateToolName);
@@ -32,15 +35,19 @@ function enableViewerCanvas(viewer) {
 	}
 }
 
+	// instantiate marker UI class and set up viewer event listeners
 function initializeMarker() {
 
 	marker = new Marker(viewer2D.container);
 
+		// adjust 2D viewer to a proper viewbox
 	viewer2D.setViewFromViewBox(metadata[viewModels[currentModel].id].viewboxes[0].box);
 
+		// update marker when camera in viewer2D changes or viewer2D resizes
 	viewer2D.addEventListener(Autodesk.Viewing.CAMERA_CHANGE_EVENT, updateMarkerOnCanvas);
     viewer2D.addEventListener(Autodesk.Viewing.VIEWER_RESIZE_EVENT, updateMarkerOnCanvas);
 
+    	// add external event hanlder on the marker UI
 	marker.addEventListenerOnMarker("markerdown", startTracking);
 
 	if (markerPlaced) {
@@ -48,14 +55,77 @@ function initializeMarker() {
 		return;
 	}
 
-	disableViewerCanvas(viewer2D);
+	disableViewerCanvas(viewer2D);											// deactivate the 2d viewer canvas
 
-	marker.hideMarker();
-	marker.addEventListenerOnMarker("canvasclick", placeMarkerOnCanvas);
-	marker.toggleCanvas(true);
+	marker.hideMarker();													// hide marker for init placement
+	marker.addEventListenerOnMarker("canvasclick", placeMarkerOnCanvas);	// set marker layer to listen to click events
+	marker.toggleCanvas(true);												// activate marker layer
 	markerPlaced = false;
 }
 
+	// place the marker on the canvas for the first time
+function placeMarkerOnCanvas(evt, skipViewerUpdate) {
+
+		// transform mouse click coordinates to offsetXY on viewer2D canvas
+	var offsetLeft = (evt ? evt.clientX : 0) - viewer2D.container.getBoundingClientRect().left;
+	var offsetTop = (evt ? evt.clientY : 0) - viewer2D.container.getBoundingClientRect().top;
+
+		// set marker position
+	marker.setPosition(offsetLeft, offsetTop);
+	marker.showMarker();
+	markerPlaced = true;
+	marker.removeEventListenerOnMarker("canvasclick", placeMarkerOnCanvas);		// remove click event listener on marker layer
+	marker.toggleCanvas(false);													// deactivate marker layer
+	enableViewerCanvas(viewer2D);												// activate viewer2D canvas
+
+		// skip viewer3D camera update
+	if (!(skipViewerUpdate))
+		updateCameraToMarker();
+
+        // check the viewer transition, add the listener when done
+    var checkTransition = setInterval(function() {
+        if (!(viewer3D.navigation.getTransitionActive())) {
+            clearInterval(checkTransition);
+            	// update marker when camera in viewer3D changes
+            viewer3D.addEventListener(Autodesk.Viewing.CAMERA_CHANGE_EVENT, updateMarkerToCamera);
+        }
+    }, 150);
+
+}
+
+	// user presses on marker, prepare for marker tracking
+function startTracking(evt) {
+	marker.addEventListenerOnMarker("markerdrag", trackMarker);
+	marker.addEventListenerOnMarker("markerup", stopTracking);
+
+	disableViewerCanvas(viewer2D);
+		// NOTE: disable marker to camera update when tracking, to avoid
+		// mutual updates between the camera and the marker
+	viewer3D.removeEventListener(Autodesk.Viewing.CAMERA_CHANGE_EVENT, updateMarkerToCamera);
+	lastPosition = null;
+	updateCameraToMarker(false, false);
+}
+
+	// tracking state of marker and updating camera
+function trackMarker(evt) {
+	if (marker.isTracking)
+		updateCameraToMarker(false, false);
+	else if (marker.isRotating)
+		updateCameraToMarker(true, false);
+}
+
+	// user lifts mouse, stop tracking marker
+function stopTracking(evt) {
+	marker.removeEventListenerOnMarker("markerdrag", trackMarker);
+	marker.removeEventListenerOnMarker("markerup", stopTracking);
+
+	enableViewerCanvas(viewer2D);
+		// restore marker to camera update when done
+	viewer3D.addEventListener(Autodesk.Viewing.CAMERA_CHANGE_EVENT, updateMarkerToCamera);
+}
+
+
+	// update the marker on 2d canvas when the camera has changed in viewer2D
 function updateMarkerOnCanvas() {
 	var position = viewer3D.navigation.getPosition();
 	var paperPos = worldToPaper(position);
@@ -65,56 +135,35 @@ function updateMarkerOnCanvas() {
     }
 }
 
-function placeMarkerOnCanvas(evt, skipViewerUpdate) {
+	// update the marker's position and direction to the camera in viewer3D
+function updateMarkerToCamera() {
+	if (marker.isTracking() || marker.isRotating())
+		return;
 
-	var offsetLeft = (evt ? evt.clientX : 0) - viewer2D.container.getBoundingClientRect().left;
-	var offsetTop = (evt ? evt.clientY : 0) - viewer2D.container.getBoundingClientRect().top;
+		// update marker direction to camera target
+	var position = viewer3D.navigation.getPosition();
+	var eye = viewer3D.navigation.getEyeVector();
+	marker.setDirection([eye.x, eye.y]);
 
-	marker.setPosition(offsetLeft, offsetTop);
-	marker.showMarker();
-	markerPlaced = true;
-	marker.removeEventListenerOnMarker("canvasclick", placeMarkerOnCanvas);
-	marker.toggleCanvas(false);
-	enableViewerCanvas(viewer2D);
+	var paperPos = worldToPaper(position);
+	if (paperPos) {
+			// update marker position to camera position
+		var newPos2D = projectToViewport(paperPos.pos, viewer2D.getCamera());
+		marker.setPosition(newPos2D.x, newPos2D.y);
 
-	if (!(skipViewerUpdate))
-		updateCameraToMarker();
+			// update floor state
+		currentFloorIndex = paperPos.boxIndex;
+		if (currentFloorIndex != lastFloorIndex) {
+				// switch to a different viewbox if we're on a different floor
+			var viewboxes = metadata[viewModels[currentModel].id].viewboxes;
+			viewer2D.setViewFromViewBox(viewboxes[currentFloorIndex].box);
+		}
 
-        // check the viewer transition, add the listener when done
-    var checkTransition = setInterval(function() {
-        if (!(viewer3D.navigation.getTransitionActive())) {
-            clearInterval(checkTransition);
-            viewer3D.addEventListener(Autodesk.Viewing.CAMERA_CHANGE_EVENT, updateMarkerToCamera);
-        }
-    }, 150);
-
+		lastFloorIndex = currentFloorIndex;
+	}
 }
 
-function startTracking(evt) {
-	marker.addEventListenerOnMarker("markerdrag", trackMarker);
-	marker.addEventListenerOnMarker("markerup", stopTracking);
-
-	disableViewerCanvas(viewer2D);
-	viewer3D.removeEventListener(Autodesk.Viewing.CAMERA_CHANGE_EVENT, updateMarkerToCamera);
-	lastPosition = null;
-	updateCameraToMarker(false, false);
-}
-
-function trackMarker(evt) {
-	if (marker.isTracking)
-		updateCameraToMarker(false, false);
-	else if (marker.isRotating)
-		updateCameraToMarker(true, false);
-}
-
-function stopTracking(evt) {
-	marker.removeEventListenerOnMarker("markerdrag", trackMarker);
-	marker.removeEventListenerOnMarker("markerup", stopTracking);
-
-	enableViewerCanvas(viewer2D);
-	viewer3D.addEventListener(Autodesk.Viewing.CAMERA_CHANGE_EVENT, updateMarkerToCamera);
-}
-
+	// update the viewer3D's camera's position and target to the marker
 function updateCameraToMarker(skipPosition, skipTarget) {
     var nav = viewer3D.navigation;
 	nav.toPerspective();
@@ -124,6 +173,8 @@ function updateCameraToMarker(skipPosition, skipTarget) {
 
 	if (!(skipPosition)) {
 
+			// transform marker coordinates to world position and update
+			// 3d camera to that position
 		var position = marker.getPosition();
 		var boundingRect = viewer2D.container.getBoundingClientRect();
 	    var normedPoint = {
@@ -147,36 +198,26 @@ function updateCameraToMarker(skipPosition, skipTarget) {
 		var position = viewer3D.navigation.getPosition();
 		var direction = marker.getDirection();
 
+			// update camera target to marker direction
 		viewer3D.navigation.setTarget(positionToVector3([position.x+direction[0], position.y+direction[1], position.z]));
 	}
 }
 
-function updateMarkerToCamera() {
-	if (marker.isTracking() || marker.isRotating())
-		return;
-
-	var position = viewer3D.navigation.getPosition();
-	var eye = viewer3D.navigation.getEyeVector();
-	marker.setDirection([eye.x, eye.y]);
-
-	var paperPos = worldToPaper(position);
-	if (paperPos) {
-		var newPos2D = projectToViewport(paperPos.pos, viewer2D.getCamera());
-
-		marker.setPosition(newPos2D.x, newPos2D.y);
-		currentFloorIndex = paperPos.boxIndex;
-		if (currentFloorIndex != lastFloorIndex) {
-			var viewboxes = metadata[viewModels[currentModel].id].viewboxes;
-			viewer2D.setViewFromViewBox(viewboxes[currentFloorIndex].box);
-		}
-
-		lastFloorIndex = currentFloorIndex;
-	}
-}
 
 
+
+/**
+ *  This class can be instantiated as a separate marker UI.
+ *  @class
+ *  @param {Object} container - The container div for the marker.
+ *  @param {Object} customMarker - The customized marker object
+ *  @constructor
+ */
+
+	// constructor for marker UI
 function Marker(container, customMarker) {
 
+		// create marker layer
 	var overlayDiv = document.createElement("div");
     overlayDiv.style.top = "0";
     overlayDiv.style.left = "0";
@@ -187,6 +228,7 @@ function Marker(container, customMarker) {
     overlayDiv.style.pointerEvents = "none";
     overlayDiv.id = "markerlayer";
 
+    	// create SVG element
     var svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
     svg.style.width = "8px";
     svg.style.height = "16px";
@@ -197,6 +239,7 @@ function Marker(container, customMarker) {
     svg.style.cursor = "pointer";
     svg.id = "marker";
 
+    	// create marker triangle
     var arrow = customMarker || document.createElementNS('http://www.w3.org/2000/svg', 'polygon');
     if (!customMarker) {
     	arrow.setAttribute("points", "0,16 4,0 8,16");
@@ -232,7 +275,6 @@ function Marker(container, customMarker) {
 		svg.style.left = translateX + "px";
 		svg.style.top = translateY + "px";
 	};
-
 
 	var isRotating = false;
 	var isTracking = false;
@@ -418,7 +460,7 @@ Marker.prototype.showMarker = function() {
 Marker.prototype.getPosition = function() {
 	// return {x:this.marker.offsetLeft, y:this.marker.offsetTop};
 
-	// workaround here
+	// workaround
 	// offsetLeft and offsetTop doesn't work for svg elements in Firefox
 	var cssLeft = this.marker.style.left;
 	var cssTop = this.marker.style.top;
@@ -437,7 +479,7 @@ Marker.prototype.setPosition = function(offsetLeft, offsetTop) {
 
 	if (this.marker.style.display === "none")
 		this.showMarker();
-	
+
 	var boundingRect = this.marker.getBBox();
 
 	this.marker.style.left = offsetLeft - boundingRect.width / 2 + "px";
@@ -469,6 +511,12 @@ Marker.prototype.removeEventListenerOnMarker = function(eventName, callFunc) {
 	}
 };
 
+/**
+ *  This class manages the direction data of the marker
+ *  @class
+ *  @param {number} direction - The unit normlized length for direction vector.
+ *  @constructor
+ */
 
 function DirectionMap(direction) {
 	var normLen = 300;
@@ -622,3 +670,59 @@ function positionToVector3(position) {
     return new THREE.Vector3(x, y, z);
 }
 
+
+
+
+
+	// set up for 2d viewer container so that it can be dragged around on top of the 3d viewer
+function initDraggableDiv() {
+
+    var floatNav = document.getElementsByClassName("draggable")[0].firstElementChild;
+    var _prev_x = 0;
+    var _prev_y = 0;
+    var _selected = null;
+
+    floatNav.onmousedown = function (evt) {
+
+        _prev_x = evt.clientX;
+        _prev_y = evt.clientY;
+        _selected = this.parentElement;
+
+        document.addEventListener("mousemove", navmousemove);
+        document.addEventListener("mouseup", navmouseup);
+
+        // stop propagation
+        return true;
+    };
+
+    var navmousemove = function (evt) {
+
+        if (_selected == null)
+            return;
+
+        var next_left = _selected.offsetLeft + evt.clientX - _prev_x;
+        var next_top = _selected.offsetTop + evt.clientY - _prev_y;
+        var _bounding_left = _selected.parentElement.offsetWidth - _selected.offsetWidth;
+        var _bounding_top = _selected.parentElement.offsetHeight - _selected.offsetHeight;
+
+        if (next_left >= 0 && next_left < _bounding_left)
+            _selected.style.left = next_left + "px";
+        if (next_top >= 0 && next_top < _bounding_top)
+            _selected.style.top = next_top + "px";
+
+        _prev_x = evt.clientX;
+        _prev_y = evt.clientY;
+
+        return true;
+    };
+
+    var navmouseup = function () {
+
+        _selected = null;
+
+        document.removeEventListener("mousemove", navmousemove);
+        document.removeEventListener("mouseup", navmouseup);
+
+        return false;
+    };
+}

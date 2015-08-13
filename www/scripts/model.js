@@ -15,6 +15,7 @@ var _blockEventSecondary = false;
 
 document.addEventListener("DOMContentLoaded", function(event) { 
 
+        //  get and refresh token function
     var getToken =  function() {
         var xhr = new XMLHttpRequest();
         xhr.open("GET", 'http://' + window.location.host + '/api/token', false);
@@ -24,6 +25,7 @@ document.addEventListener("DOMContentLoaded", function(event) {
         return res.access_token;               
     }
 
+        //  viewer initializer
     function initialize() {
         var options = {
             env: "AutodeskProduction",
@@ -40,16 +42,18 @@ document.addEventListener("DOMContentLoaded", function(event) {
             viewer2D = new Autodesk.Viewing.Private.GuiViewer3D(viewer2DContainer, {});
 
             viewer2D.addEventListener(Autodesk.Viewing.GEOMETRY_LOADED_EVENT, function (event) {
-                viewer2D.toolbar.setVisible(false);
+                viewer2D.toolbar.setVisible(false); // hide the tool bar in 2d viewer
             });
 
             viewer3D.addEventListener(Autodesk.Viewing.GEOMETRY_LOADED_EVENT, function (event) {
-                initializeMarker();
+                panelDisabled = false;  // enable panel after geometry loaded
+                initializeMarker();     // init marker layer
             });
 
             viewer3D.start();
             viewer2D.start();
 
+                // select object with same dbId in 3d viewer
             viewer3D.addEventListener(Autodesk.Viewing.SELECTION_CHANGED_EVENT, function (event) {        
                 if (_blockEventSecondary)
                     return;
@@ -58,6 +62,7 @@ document.addEventListener("DOMContentLoaded", function(event) {
                 _blockEventMain = false;
             });
 
+                // select object with same dbId in 2d viewer
             viewer2D.addEventListener(Autodesk.Viewing.SELECTION_CHANGED_EVENT, function (event) {
                 if (_blockEventMain)
                     return;
@@ -71,14 +76,18 @@ document.addEventListener("DOMContentLoaded", function(event) {
     }
 
     initialize();
-    metadata = JSON.parse(rac);
-    initializeControlPanel();
+    metadata = JSON.parse(rac); // read hardwired location data for coordinate system mapping
+    initializeControlPanel();   // init control panel
+    initDraggableDiv();         // init draggable behavieor for viewer2D container
 
 });
 
-function loadDocument (urnStr, callback) {
-    var urn = "urn:" + urnStr;
+function loadDocument (urnStr, cb3d, cb2d) {
 
+        // disable panel while loading document
+    panelDisabled = true;
+
+    var urn = "urn:" + urnStr;
     Autodesk.Viewing.Document.load(urn,
 
         // onSuccessCallback
@@ -86,8 +95,8 @@ function loadDocument (urnStr, callback) {
             var geometryItems3D = Autodesk.Viewing.Document.getSubItemsWithProperties(document.getRootItem(), {'type':'geometry', 'role':'3d'}, true);
             var geometryItems2D = Autodesk.Viewing.Document.getSubItemsWithProperties(document.getRootItem(), {'type':'geometry', 'role':'2d'}, true);
 
-            viewer3D.load(document.getViewablePath(geometryItems3D[0]), null, function () {if (callback) callback();});
-            viewer2D.load(document.getViewablePath(geometryItems2D[0]));
+            viewer3D.load(document.getViewablePath(geometryItems3D[0]), null, function () {if (cb3d) cb3d();});
+            viewer2D.load(document.getViewablePath(geometryItems2D[0]), null, function () {if (cb2d) cb2d();});
         },
 
         // onErrorCallback
